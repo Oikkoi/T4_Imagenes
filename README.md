@@ -11,7 +11,7 @@ Archivo que contiene funciones auxiliares.
 2. `visualizar(img: np.array, correccion_gamma: bool = True, cmap="gray", vmin=None, vmax=None)`:
 la función recibe el array original, si se desea añadir corrección gamma para mejor visualización en el monitor y solicita valores para el mapa de visualización (por defecto en gris, ya que si la imagen tiene 3 dimensiones (es decir, no es gris) `plt.imshow()` usa un cmap correspondiente.) También al poner los valores de `vmin` y `vmax` en **None**, no se 'clipean' los valores.
 3. `guardar_imagen(img: np.array, nombre_archivo: str, cmap="gray", vmin=None, vmax=None)`:
-Tal como su nombre indica, guarda un array de numpy como una imagen visible de nombre **nombre_archivo** (como parámetro de la función). Al igual que en `visualizar()`, se ponen valores default para el `cmap`, `vmin` y `vmax` por si la imagen fuese en blanco y negro.
+Tal como su nombre indica, guarda un array de numpy como una imagen visible de nombre **nombre_archivo** (como parámetro de la función). Al igual que en `visualizar()`, se asignan valores default para el `cmap`, `vmin` y `vmax` por si la imagen fuese en grayscale.
 
 # P1 (`P1.py`, `P1_exp.py`)
 ## `P1.py`

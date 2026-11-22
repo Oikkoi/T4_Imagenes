@@ -38,8 +38,8 @@ def visualizar(img: np.array, correccion_gamma: bool = True, cmap="gray", vmin=N
     alto, ancho = img.shape[:2]
     fig, ax = plt.subplots(1, 1, figsize=(5.0, 5.0 * (alto / ancho)))
     if correccion_gamma:
-        img_gamma = (img.copy()) ** (1/2.2)
-    im = ax.imshow(img_gamma, cmap=cmap, vmin=vmin, vmax=vmax)
+        img = (img.copy()) ** (1/2.2)
+    im = ax.imshow(img, cmap=cmap, vmin=vmin, vmax=vmax)
     ax.axis("off")
     plt.tight_layout()
     plt.show()
