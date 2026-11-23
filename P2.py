@@ -23,8 +23,9 @@ def reescalar(g, p_bajo=0.5, p_alto=99.5):
     return np.clip((g - lo) / (hi - lo), 0.0, 1.0)
 
 
-def mostrar(imgs, titulos, cmap='gray', ncols=None, size=4, vmin=None, vmax=None, marco=False, correccion_gamma=False):
-    log("iniciando función de visualización *mostrar*")
+def mostrar(imgs, titulos, cmap='gray', ncols=None, size=4, vmin=None, vmax=None, marco=False, correccion_gamma=False, nombre_guardado=None, log: bool = True):
+    if log:
+        log("iniciando función de visualización *mostrar*")
     if correccion_gamma:
         imgs = [np.clip(img, 0, None) ** (1/2.2) for img in imgs]
     n = len(imgs)
@@ -33,7 +34,7 @@ def mostrar(imgs, titulos, cmap='gray', ncols=None, size=4, vmin=None, vmax=None
     cmaps = cmap if isinstance(cmap, list) else [cmap] * n
 
     fig, axes = plt.subplots(
-        nrows, ncols, figsize=(size * ncols, size * nrows))
+        nrows, ncols, figsize=(size * ncols, size * nrows), dpi=200)
     axes = np.atleast_1d(axes).ravel()
     for ax, img, titulo, cm in zip(axes, imgs, titulos, cmaps):
         ax.imshow(img, cmap=cm, vmin=vmin, vmax=vmax)
@@ -45,9 +46,15 @@ def mostrar(imgs, titulos, cmap='gray', ncols=None, size=4, vmin=None, vmax=None
         else:
             ax.axis('off')
     plt.tight_layout()
+    if nombre_guardado:
+        fig.canvas.draw()
+        rgba = np.asarray(fig.canvas.buffer_rgba())
+        rgb = (rgba[..., :3])/255.0
+        guardar_imagen(rgb, f"comparativa_{nombre_guardado}.png")
     plt.show()
-    log(
-        f"Finaliza la visualización del conjunto de {str(n)} imagenes")
+    if log:
+        log(
+            f"Finaliza la visualización del conjunto de {str(n)} imagenes")
 
 
 def H_homomorfico(forma, gamma_H=1.5, gamma_L=0.5, D0=30, c=1.0):
@@ -132,7 +139,7 @@ def aplicar_homo_durand(canal_2D: np.array):
     return homomorfico, durandeado
 
 
-def crominancia_por_canales(imagen_rgb: np.array, beta: float, e: float = 1e-12):
+def crominancia_por_canales(imagen_rgb: np.array, beta: float, e: float = 1e-12, clip: bool = True):
     log(
         f"## Iniciando aplicación de filtro de Durand y Homomótfico a los canales por separado")
     log(f"## 𝛽 = {str(beta)}")
@@ -150,7 +157,10 @@ def crominancia_por_canales(imagen_rgb: np.array, beta: float, e: float = 1e-12)
         croma_B = B / (Y + e)
         B_prima = Y_prima * (croma_B)**beta
         imagen_hecha = unir_colores(R_prima, G_prima, B_prima)
-        imagen_clip = np.clip(imagen_hecha.copy(), 0, 1)
+        if clip:
+            imagen_clip = np.clip(imagen_hecha.copy(), 0, 1)
+        else:
+            imagen_clip = imagen_hecha.copy()
         log(
             f"Porcentaje de pixeles cortados por el clip [0, 1]: {np.mean(imagen_hecha > 1.0) * 100}")
         log(
@@ -177,18 +187,22 @@ def estrategia_1(nombre_imagen: str, beta: float, ruta=None):
     return crominancia_homo, crominancia_durand
 
 
-def estrategia_2(nombre_imagen: str, beta: float, ruta=None):
-    log(f"## Iniciando trabajo para {nombre_imagen}, 𝛽 = {str(beta)} \n")
-    homo, durand = estrategia_1(
-        nombre_imagen, 1, os.path.join(ruta, "crominancia"))
+def estrategia_2(nombre_imagen: str, alfa: float, ruta=None):
+    log(f"## Iniciando trabajo para {nombre_imagen}, 𝛼 = {str(alfa)} \n")
+    imagen_rgb = cargar_imagen(nombre_imagen)
+    homo, durand = crominancia_por_canales(imagen_rgb, 1, clip=False)
     homo = (homo**(1/2.2)).astype(np.float32)
     durand = (durand**(1/2.2)).astype(np.float32)
+    guardar_imagen(homo, f"{nombre_imagen.split(".")[0]}_referencia_homomorfica_beta_1.png",
+                   ruta_adicional=ruta)
+    guardar_imagen(
+        durand, f"{nombre_imagen.split(".")[0]}_referencia_durand_beta_1.png", ruta_adicional=ruta)
     homo_lab = cv2.cvtColor(homo, cv2.COLOR_RGB2Lab)
     durand_lab = cv2.cvtColor(durand, cv2.COLOR_RGB2Lab)
 
     for img_lab, tipo in ((homo_lab, "homomorfico"), (durand_lab, "durand")):
         L, a, b = cv2.split(img_lab)
-        C = np.hypot(a, b) * beta
+        C = np.hypot(a, b) * alfa
         h = np.arctan2(b, a)
         a_prima = C * np.cos(h)
         b_prima = C * np.sin(h)
@@ -196,18 +210,18 @@ def estrategia_2(nombre_imagen: str, beta: float, ruta=None):
         img_rgb_prima = cv2.cvtColor(img_lab_prima, cv2.COLOR_Lab2RGB)
         fuera_rango = (img_rgb_prima < 0.0) | (img_rgb_prima > 1.0)
         log(
-            f"[{tipo} | C*={str(beta)}] Valores fuera de [0, 1]: {np.mean(fuera_rango) * 100:.4f}% "
+            f"[{tipo} | C*={str(alfa)}] Valores fuera de [0, 1]: {np.mean(fuera_rango) * 100:.4f}% "
             f"(bajo 0: {np.mean(img_rgb_prima < 0.0) * 100:.4f}%, "
             f"sobre 1: {np.mean(img_rgb_prima > 1.0) * 100:.4f}%)"
         )
         log(
-            f"[{tipo} | C*={str(beta)}] Píxeles con distorsión por clip: "
+            f"[{tipo} | C*={str(alfa)}] Píxeles con distorsión por clip: "
             f"{np.mean(np.any(fuera_rango, axis=-1)) * 100:.4f}%"
         )
         img_clip = np.clip(img_rgb_prima, 0.0, 1.0)
-        nombre_salida = f"{nombre_imagen.split(".")[0]}_{tipo}_cielch_c_{str(beta)}.png"
+        nombre_salida = f"{nombre_imagen.split(".")[0]}_{tipo}_cielch_c_{str(alfa)}.png"
         guardar_imagen(img_clip, nombre_salida,
-                       ruta_adicional=os.path.join(ruta, "CIELab"))
+                       ruta_adicional=ruta)
         log(f"Guardada {nombre_salida} (ya en espacio sRGB)")
     log("\n")
 

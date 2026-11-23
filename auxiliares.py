@@ -7,8 +7,11 @@ os.environ["OPENCV_IO_ENABLE_HDR"] = "1"
 import cv2  # noqa: E402  # isort: skip
 
 
-def cargar_imagen(nombre: str, normalizar: bool = False):
+def cargar_imagen(nombre: str, normalizar: bool = False, override_ruta=None):
     ruta = os.path.join(os.path.dirname(__file__), "files", nombre)
+    if override_ruta:
+        ruta = os.path.join(override_ruta, nombre)
+        print(ruta)
 
     if not os.path.isfile(ruta):
         raise ValueError("No existe la imagen")
