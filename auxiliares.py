@@ -7,7 +7,7 @@ os.environ["OPENCV_IO_ENABLE_HDR"] = "1"
 import cv2  # noqa: E402  # isort: skip
 
 
-def cargar_imagen(nombre: str, normalizar: bool = True):
+def cargar_imagen(nombre: str, normalizar: bool = False):
     ruta = os.path.join(os.path.dirname(__file__), "files", nombre)
 
     if not os.path.isfile(ruta):
@@ -31,6 +31,7 @@ def cargar_imagen(nombre: str, normalizar: bool = True):
     if normalizar:
         imagen /= np.max(imagen)
         imagen = np.clip(imagen, 0, 1)
+    print("Imagen cargada")
     return imagen
 
 
@@ -46,17 +47,37 @@ def visualizar(img: np.array, correccion_gamma: bool = True, cmap="gray", vmin=N
     return
 
 
-def guardar_imagen(img: np.array, nombre_archivo: str, cmap="gray", vmin=None, vmax=None):
+def calcular_ruta_guardado(nombre_archivo: str, ruta_adicional: str = None):
+    file_name = os.path.basename(getattr(__main__, "__file__", ""))
+    carpeta_exacta = file_name.split(".")[0]
+    ruta_destino = os.path.join(
+        os.path.dirname(__file__), "Resultados", carpeta_exacta
+    )
+    if ruta_adicional is not None:
+        ruta_destino = os.path.join(ruta_destino, ruta_adicional)
+
+    os.makedirs(ruta_destino, exist_ok=True)
+    return os.path.join(ruta_destino, nombre_archivo)
+
+
+def guardar_imagen(img: np.array, nombre_archivo: str, cmap="gray", vmin=None, vmax=None, ruta_adicional: str = None):
     img_copia = img.copy()
     if img_copia.ndim == 3:
         img_copia = np.clip(img_copia, 0, 1)
-    file_name = os.path.basename(getattr(__main__, "__file__", ""))
-    carpeta_exacta = file_name.split(".")[0]
-    ruta_destino = os.path.join(os.path.dirname(
-        __file__), "Resultados", carpeta_exacta)
-    os.makedirs(ruta_destino, exist_ok=True)
-    ruta_completa = os.path.join(ruta_destino, nombre_archivo)
+    ruta_completa = calcular_ruta_guardado(nombre_archivo, ruta_adicional)
     plt.imsave(ruta_completa, img_copia, cmap=cmap, vmin=vmin, vmax=vmax)
+    return
+
+
+def log(texto: str, reiniciar: bool = False):
+    ruta_log = calcular_ruta_guardado("log.md")
+    modo = "a"
+    if reiniciar:
+        modo = "w"
+    with open(ruta_log, modo, encoding='utf-8') as f:
+        f.write(texto + "\n")
+    print(texto)
+    return
 
 
 if __name__ == "__main__":
