@@ -1,12 +1,21 @@
-import numpy
 import os
-from P2 import estrategia_1, estrategia_2, mostrar
+import numpy as np
+from P2 import (
+    estrategia_1,
+    estrategia_2,
+    mostrar,
+    extraer_luminancia,
+    aplicar_homo_durand,
+    reescalar,
+)
 from auxiliares import log, cargar_imagen, guardar_imagen
 
 
 # Exp 1: Probar valores de 𝛽:
 def exp1(parametros: tuple):
-    imagenes, betas, ruta_adicional = parametros
+    imagenes = parametros["imagenes"]
+    betas = parametros["betas"]
+    ruta_adicional = parametros["ruta"]
     log("", True)  # Ping Reset
     log("# Experimento 1 - Pregunta 2:")
     for beta in betas:
@@ -66,7 +75,7 @@ def comparacion_exp2():
         mostrar(imgs_homo, titulos,
                 nombre_guardado=f"{key}_comparacion_homomorfica", log=False)
         mostrar(imgs_durand, titulos,
-                nombre_guardado=f"{key}_comparacion_homomorfica", log=False)
+                nombre_guardado=f"{key}_comparacion_durand", log=False)
 
     return
 
@@ -74,7 +83,9 @@ def comparacion_exp2():
 # Exp2: probar estrategia 2 con distintos valores de saturación de color (valores alfa)
 def exp2(parametros: tuple):
     # str imagenes, multiplicadores para C*, ruta extra para el guardado
-    imagenes, alfas, ruta_adicional = parametros
+    imagenes = parametros["imagenes"]
+    alfas = parametros["alfas"]
+    ruta_adicional = parametros["ruta"]
     log("", True)
     log("# Experimento 2 - Pregunta 2:")
     for alfa in alfas:
@@ -84,29 +95,96 @@ def exp2(parametros: tuple):
     return
 
 
+# Exp 3: Mostrar og, luminancia comprimida y reconstrucciones en color
+def exp3(parametros: tuple):
+    imagenes = parametros["imagenes"]
+    recortes = parametros["recortes"]
+    casos_principales = parametros["casos_principales"]
+    ruta_adicional = parametros["ruta"]
+    log("", True)
+    log("# Experimento 3 - Pregunta 2:")
+    for imagen in imagenes:
+        key = imagen.split(".")[0]
+        log(f"## Generando comparaciones principales para {imagen}")
+        imagen_rgb = cargar_imagen(imagen)
+        orig_vis = reescalar(imagen_rgb) ** (1 / 2.2)
+        log(
+            f"[{key}] Original mapeada con función reescalar y gamma = 1/2.2"
+        )
+        Y = extraer_luminancia(imagen_rgb)
+        Y_homo, Y_durand = aplicar_homo_durand(Y)
+        luminancias = {
+            "homomorfico": Y_homo ** (1 / 2.2),
+            "durand": Y_durand ** (1 / 2.2),
+        }
+        recorte_color, recorte_luz = recortes[key]
+        nombre_c1, (sy1, sx1) = recorte_color
+        nombre_c2, (sy2, sx2) = recorte_luz
+        for tipo in ("homomorfico", "durand"):
+            beta, alfa = casos_principales[tipo]
+            Y_prima = luminancias[tipo]
+            # Estos requieren los experimentos 1 y 2 antes
+            arch_est1 = f"{key}_{tipo}_beta_{str(beta)}.png"
+            arch_est2 = f"{key}_{tipo}_cielch_c_{str(alfa)}.png"
+            img_est1 = cargar_imagen(
+                arch_est1, override_ruta=ruta_exp1) / 255.0
+            img_est2 = cargar_imagen(
+                arch_est2, override_ruta=ruta_exp2) / 255.0
+
+
 if __name__ == "__main__":
-    requisitos = {
-        "1": (("bigFogMap.tif", "memorial.hdr"), (0.6, 1, 1.4), "exp1"),
-        "2": (("bigFogMap.tif", "memorial.hdr"), (0.2, 1, 1.8), "exp2"),
-        # "3": (("bigFogMap.tif", "memorial.hdr"), )
+    imagenes_base = ("bigFogMap.tif", "memorial.hdr")
+
+    parametros = {
+        "1": {
+            "imagenes": imagenes_base,
+            "betas": (0.6, 1, 1.4),
+            "ruta": "exp1",
+        },
+        "2": {
+            "imagenes": imagenes_base,
+            "alfas": (0.2, 1, 1.8),
+            "ruta": "exp2",
+        },
+        "3": {
+            "imagenes": imagenes_base,
+            "recortes": {
+                "bigFogMap": (
+                    ("colores intensos", (slice(250, 450), slice(300, 500))),
+                    ("transición fuerte", (slice(100, 300), slice(500, 700))),
+                ),
+                "memorial": (
+                    ("vitrales / color", (slice(150, 320), slice(180, 340))),
+                    ("borde luz/sombra", (slice(80, 250), slice(220, 380))),
+                ),
+            },
+            "casos_principales": {
+                "homomorfico": (1.4, 1.8),  # (beta, alfa)
+                "durand": (1, 1),           # (beta, alfa)
+            },
+            "ruta": "exp3",
+        },
     }
+
     experimentos = {
         "1": exp1,
         "2": exp2,
+        "3": exp3,
     }
 
+    max_exp = len(parametros)
     exp = input(
-        "Inserte el número de experimento que desea replicar (1-X); 0 para ejecutar todos: ")
-    exp_validos = ("0", "1", "2")
+        f"Inserte el número de experimento que desea replicar (1-{max_exp}); 0 para ejecutar todos: "
+    )
+    exp_validos = ("0",) + tuple(parametros.keys())
+
     if exp not in exp_validos:
         raise ValueError(
-            "Valor Inválido. La resuesta debe ser un número entero entre 0 y X")
+            f"Valor Inválido. La respuesta debe ser un número entero entre 0 y {max_exp}"
+        )
+
     if exp == "0":
-        for i in ("1", "2"):
-            parametros = requisitos[i]
-            experimento = experimentos[i]
-            experimento(parametros)
+        for i in parametros:
+            experimentos[i](parametros[i])
     else:
-        parametros = requisitos[exp]
-        experimento = experimentos[exp]
-        experimento(parametros)
+        experimentos[exp](parametros[exp])
