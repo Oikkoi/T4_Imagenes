@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import cv2
 from P2 import (
     estrategia_1,
     estrategia_2,
@@ -73,9 +74,9 @@ def comparacion_exp2():
         imgs_homo = (referencia_homo, homo_02, homo_1, homo_18)
         titulos = ("Referencia", "alfa = 0.2", "alfa = 1", "alfa = 1.8")
         mostrar(imgs_homo, titulos,
-                nombre_guardado=f"{key}_comparacion_homomorfica", log=False)
+                nombre_guardado=f"{key}_comparacion_homomorfica", log=False, ruta_adicional="exp2")
         mostrar(imgs_durand, titulos,
-                nombre_guardado=f"{key}_comparacion_durand", log=False)
+                nombre_guardado=f"{key}_comparacion_durand", log=False, ruta_adicional="exp2")
 
     return
 
@@ -95,8 +96,34 @@ def exp2(parametros: tuple):
     return
 
 
+def croma_tono(img_rgb: np.array):
+    lab = cv2.cvtColor(img_rgb.astype(np.float32), cv2.COLOR_RGB2Lab)
+    L, a, b = cv2.split(lab)
+    return np.hypot(a, b), np.arctan2(b, a)
+
+
+def diferencia_tono(h1: np.array, h2: np.array):
+    dif = np.arctan2(np.sin(h1 - h2), np.cos(h1 - h2))
+    return np.degrees(np.abs(dif)).mean()
+
+
+def cuantificar_color(etiqueta: str, og: np.array, est1: np.array, est2: np.array, beta: float, alfa: float):
+    C_og, h_og = croma_tono(og)
+    C_1, h_1 = croma_tono(est1)
+    C_2, h_2 = croma_tono(est2)
+    log(f"[{etiqueta}] C* medio: original {C_og.mean():.2f}, "
+        f"β={beta} {C_1.mean():.2f}, alfa = {alfa} {C_2.mean():.2f}")
+    log(f"[{etiqueta}] Cambio de tono medio: "
+        f"β={beta} {diferencia_tono(h_og, h_1):.2f}°, "
+        f"alfa = {alfa} {diferencia_tono(h_og, h_2):.2f}°")
+
+
 # Exp 3: Mostrar og, luminancia comprimida y reconstrucciones en color
 def exp3(parametros: tuple):
+    ruta_global = os.path.join(os.path.dirname(
+        __file__), "Resultados", "P2_exp")
+    ruta_exp1 = os.path.join(ruta_global, "exp1")
+    ruta_exp2 = os.path.join(ruta_global, "exp2")
     imagenes = parametros["imagenes"]
     recortes = parametros["recortes"]
     casos_principales = parametros["casos_principales"]
@@ -131,6 +158,24 @@ def exp3(parametros: tuple):
             img_est2 = cargar_imagen(
                 arch_est2, override_ruta=ruta_exp2) / 255.0
 
+            imgs = (orig_vis, Y_prima, img_est1, img_est2)
+            titulos = ("Original", "Luminancia comprimida",
+                       f"β = {beta}", f"alfa = {alfa}")
+            mostrar(imgs, titulos, vmin=0, vmax=1,
+                    nombre_guardado=f"{key}_{tipo}_comparativa", log=False,
+                    ruta_adicional=ruta_adicional)
+
+            recortes_zonas = ((nombre_c1, sy1, sx1), (nombre_c2, sy2, sx2))
+            for n, (nombre_c, sy, sx) in enumerate(recortes_zonas, 1):
+                imgs_recorte = [img[sy, sx] for img in imgs]
+                mostrar(imgs_recorte, titulos, vmin=0, vmax=1,
+                        nombre_guardado=f"{key}_{tipo}_recorte_{n}", log=False,
+                        ruta_adicional=ruta_adicional)
+                cuantificar_color(f"{key} | {tipo} | {nombre_c}",
+                                  imgs_recorte[0], imgs_recorte[2], imgs_recorte[3],
+                                  beta, alfa)
+    return
+
 
 if __name__ == "__main__":
     imagenes_base = ("bigFogMap.tif", "memorial.hdr")
@@ -150,12 +195,12 @@ if __name__ == "__main__":
             "imagenes": imagenes_base,
             "recortes": {
                 "bigFogMap": (
-                    ("colores intensos", (slice(250, 450), slice(300, 500))),
-                    ("transición fuerte", (slice(100, 300), slice(500, 700))),
+                    ("colores intensos", (slice(130, 330), slice(230, 430))),
+                    ("transición fuerte", (slice(270, 470), slice(400, 600))),
                 ),
                 "memorial": (
-                    ("vitrales / color", (slice(150, 320), slice(180, 340))),
-                    ("borde luz/sombra", (slice(80, 250), slice(220, 380))),
+                    ("vitrales / color", (slice(430, 560), slice(250, 430))),
+                    ("borde luz/sombra", (slice(70, 220), slice(90, 260))),
                 ),
             },
             "casos_principales": {

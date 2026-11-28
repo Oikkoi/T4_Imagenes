@@ -23,7 +23,7 @@ def reescalar(g, p_bajo=0.5, p_alto=99.5):
     return np.clip((g - lo) / (hi - lo), 0.0, 1.0)
 
 
-def mostrar(imgs, titulos, cmap='gray', ncols=None, size=4, vmin=None, vmax=None, marco=False, correccion_gamma=False, nombre_guardado=None, log: bool = True):
+def mostrar(imgs, titulos, cmap='gray', ncols=None, size=4, vmin=None, vmax=None, marco=False, correccion_gamma=False, nombre_guardado=None, log: bool = True, ruta_adicional=None):
     if log:
         log("iniciando función de visualización *mostrar*")
     if correccion_gamma:
@@ -50,7 +50,8 @@ def mostrar(imgs, titulos, cmap='gray', ncols=None, size=4, vmin=None, vmax=None
         fig.canvas.draw()
         rgba = np.asarray(fig.canvas.buffer_rgba())
         rgb = (rgba[..., :3])/255.0
-        guardar_imagen(rgb, f"comparativa_{nombre_guardado}.png")
+        guardar_imagen(rgb, f"comparativa_{nombre_guardado}.png",
+                       ruta_adicional=ruta_adicional)
     plt.show()
     if log:
         log(
